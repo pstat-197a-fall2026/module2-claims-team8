@@ -11,6 +11,17 @@ library(rvest)
 library(qdapRegex)
 library(stopwords)
 library(tokenizers)
+library(tidyverse)
+library(tidytext)
+library(textstem)
+library(rvest)
+library(qdapRegex)
+library(stopwords)
+library(tokenizers)
+library(tidyverse)
+library(keras3)
+library(tensorflow)
+
 ```
 
 
@@ -19,10 +30,10 @@ library(tokenizers)
 
 ```{r}
 # can comment entire section out if no changes to preprocessing.R
-source('scripts/task1_preprocessing.R')
+source('../scripts/task1_preprocessing.R')
 
 # load raw data
-load('data/claims-raw.RData')
+load('../data/claims-raw.RData')
 
 # preprocess (will take a minute or two)
 task1_claims_clean <- claims_raw %>%

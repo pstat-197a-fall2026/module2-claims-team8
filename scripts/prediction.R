@@ -1,5 +1,5 @@
 require(tidyverse)
-require(keras)
+require(keras3)
 require(tensorflow)
 load('data/claims-test.RData')
 load('data/claims-raw.RData')

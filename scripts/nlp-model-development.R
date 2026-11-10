@@ -74,4 +74,4 @@ history <- model %>%
 ## CHECK TEST SET ACCURACY HERE
 
 # save the entire model as a SavedModel
-save_model(model, "results/example-model")
+save_model(model, "results/example-model.keras")

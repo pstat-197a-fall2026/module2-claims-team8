@@ -1,16 +1,30 @@
 ---
 title: "Summary of exploratory tasks"
-author: 'YOUR NAMES HERE'
+author: 'Shiv Dutta, Anna Calkins, Christian Solares, Kendra Martinez, Khoi Huynh'
 date: today
 ---
 
 ### HTML scraping
 
-Does including header content improve predictions? Answer the question and provide quantitative evidence supporting your answer.
+**Including header content did not meaningfully improve predictions.** We fit a logistic principal component regression to the binary class using (i) paragraph text only and (ii) paragraph plus header text (`h1`--`h6`), choosing the number of components by 5-fold cross-validation. Results are averaged over three random 80/20 splits of the same 1,969 pages.
+
+| Text scraped         | Accuracy | Sensitivity | Specificity | AUC   |
+|----------------------|----------|-------------|-------------|-------|
+| Paragraphs only      | 78.7%    | 81.1%       | 75.8%       | 0.835 |
+| Paragraphs + headers | 78.3%    | 79.1%       | 77.5%       | 0.847 |
+
+Accuracy changed by $-0.3$ percentage points, less than the roughly 2-point variation across splits; AUC was slightly higher with headers, but the evidence is weak.
 
 ### Bigrams
 
-Do bigrams capture additional information relevant to the classification of interest? Answer the question, **briefly** describe what analysis you conducted to arrive at your answer, and provide quantitative evidence supporting your answer.
+**Bigrams did not capture meaningful additional information.** We fit a logistic principal component regression to the word tokens, then fed its predicted log-odds, together with a few principal components of the bigram tokens (chosen by cross-validation), into a second logistic regression. Both models were evaluated on the same three splits of 1,952 pages.
+
+| Model              | Accuracy | Sensitivity | Specificity | AUC   |
+|--------------------|----------|-------------|-------------|-------|
+| Words only         | 78.7%    | 81.3%       | 75.4%       | 0.844 |
+| Words + bigram PCs | 79.2%    | 84.7%       | 72.4%       | 0.848 |
+
+Accuracy rose by only $0.5$ percentage points and AUC by $0.004$. In two of three splits the bigram components did not help (likelihood-ratio $p = 0.92$ and $0.36$); only the third showed a significant gain ($p < 0.001$, $+2.6$ points), which we do not treat as reliable on its own.
 
 ### Neural net
 

@@ -2,7 +2,7 @@
 
 install.packages(c("tidyverse","tidymodels","tidytext","textstem","rvest","qdapRegex","stopwords","tokenizers"))
 
-source('task1_preprocessing.R')
+source('../task1_preprocessing.R')
 suppressPackageStartupMessages(library(tidymodels))
 
 # find a data file whether or not it sits in a data/ subfolder

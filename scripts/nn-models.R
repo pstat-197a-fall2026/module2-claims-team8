@@ -9,28 +9,24 @@ library(tidymodels)
 
 keras3::set_random_seed(2026)
 
-load("data/claims-clean-example.RData")
-
-claims <- claims_clean |>
-  mutate(text_clean = replace_na(text_clean, ""),
-         bclass = factor(bclass),
-         mclass = factor(mclass))
-
-levels(claims$mclass)
-levels(claims$bclass)
+load("data/claims-clean.RData")
+load("data/claims-partitions.RData")
 
 # ------------------------
 # Section 2: Train/Validation split
 # ------------------------
 
-set.seed(2026)
+train <- training(partitions) |>
+  mutate(text_clean = replace_na(text_clean, ""),
+         bclass = factor(bclass),
+         mclass = factor(mclass))
 
-claims_split <- initial_split(claims, prop = 0.8, strata = bclass)
+val <- testing(partitions) |>
+  mutate(text_clean = replace_na(text_clean, ""),
+         bclass = factor(bclass),
+         mclass = factor(mclass))
 
-train <- training(claims_split)
-val <- testing(claims_split)
-
-saveRDS(val$.id, "data/val-ids.rds")
+class_names <- levels(claims_clean$mclass)
 
 nrow(train)
 nrow(val)
@@ -103,15 +99,12 @@ table(predicted = pred_b, actual = y_val_b)
 # Section 5: Multiclass model (5 categories)
 # ------------------------
 
-class_names <- levels(claims$mclass)
 n_classes <- length(class_names)
 
 # labels as 0, 1, 2, 3, 4
 y_train_m <- as.integer(train$mclass) - 1
 y_val_m <- as.integer(val$mclass) - 1
 
-# free memory from the binary model (so RStudio doesnt freeze)
-keras3::clear_session()
 
 model_m <- keras_model_sequential() |>
   vectorizer() |>
@@ -227,4 +220,10 @@ eval_m_tuned <- model_m_tuned |>
   evaluate(val$text_clean, y_val_m)
 eval_m_tuned 
 
-# Tuning (adding word pairs, a larger vocabulary and more dropout) slightly improved the binary model, about 0.80 to 0.82, but did not meaningfully change the multiclass model (about 0.77-0.797)
+
+# -----------
+# Section 7: Save final models 
+# -----------
+
+save_model(model_b_tuned, "results/bclass-nn-model.keras")
+save_model(model_m, "results/mclass-nn-model.keras")

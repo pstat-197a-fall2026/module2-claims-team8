@@ -183,10 +183,99 @@ diag(pred_tbl)/colSums(pred_tbl)
 overall accuracy = .7334906
 
 
+
+Now we test the two models on claims-test.RData, where claims-test.RData has 929 webpages, but it has no labels.
+Then we export a deployable copy of each model and a set of predictions from each model on the test data.
+```{r}
+load("../data/claims-test.RData")
+
+# simialr to training data, we need to turn the raw unlabeled test webpages into clean text that basically resembles the training data.
+# without this nlp_fn() would not work. 
+# parse_data() is from preprocessing-primary.R, it uses parse_fn()
+test_clean <- parse_data(claims_test) %>%
+  select(.id, text_clean) %>%
+  mutate(bclass = factor(NA))
+# error where bclass was not found. 
+
+# creates TF-IDF matrix
+test_dtm_final <- nlp_fn(test_clean)
+
+
+# I have to make sure that the data I trained my models have the same tokens as my test_clean (from claims-test.RData). 
+missing_cols <- setdiff(colnames(train_predictors), colnames(test_dtm_final))
+test_dtm_final[missing_cols] <- 0
+# setdiff() is used to find the elements which are in train_predictors but not in test_dtm_final. it then outputs all the elements not in test_dtm_final.
+# then for each token in missing_cols, fill each column with 0 if the column doesn't exist.
+# For each token in missing_cols, assign 0 to every row of that column.
+# now we remove extra tokens and reorder the test_dtm_final to match the train_predictors
+extra_cols <- setdiff(colnames(test_dtm_final),
+                      c(".id", "bclass", colnames(train_predictors)))
+# setdiff() again but now finds tokens only in test_dtm_final
+test_dtm_final <- select(test_dtm_final, -all_of(extra_cols))
+# then we drop the extra tokens
+test_dtm_final <- select(test_dtm_final, all_of(
+  c(".id", "bclass", colnames(train_predictors))))
+# reorders the tokens in the same order as train_predictors
+
+# reproject onto the same proj_out, but have to remove .id and bclass
+test_pcs_final <- reproject_fn(.dtm = test_dtm_final 
+                               %>% select(-.id, -bclass), proj_out)
+x_test_final <- as.matrix(test_pcs_final)
+# glmnet() doesn't accept tibbles, so have to change it to a numeric matrix. just like x_test and x_train.
+
+
+# Binary prediction (using binary elastic net model)
+pred_prob_final <- predict(en_bin, s = cv_bin$lambda.min,
+                           newx = x_test_final, type = "response") %>%
+  as.numeric()
+bclass_final <- factor(pred_prob_final > 0.5, 
+                       labels = levels(train$bclass))
+# pred > .5 = "Relevant claim content", < .5 = N/A: No relevant content. as prev seen.
+
+# Multiclass prediction (using multiclass elastic net model)
+pred_multi_final <- predict(en_mult, s = cv_mult$lambda.min,
+                            newx = x_test_final, type = "response")
+
+mclass_final <- as_tibble(pred_multi_final[, , 1]) %>%
+  mutate(row = row_number()) %>%
+  pivot_longer(-row, names_to = "label", values_to = "probability") %>%
+  group_by(row) %>%
+  slice_max(probability, n = 1) %>%
+  pull(label) %>%
+  factor(levels = levels(train$mclass))
+
+# It seems the claims-test.RData had 33 blank pages. 
+# the blank pages were dropped by nlp_fn().
+# the blank page should have been labled "N/A: No relevant content." 
+# filter(test_clean, .id %in% dropped_ids)
+pred_df <- test_clean %>%
+  select(.id) %>%
+  left_join(test_dtm_final %>%
+              select(.id) %>%
+              bind_cols(bclass.pred = bclass_final, 
+                        mclass.pred = mclass_final), 
+            by = ".id") %>%
+# create a table with columns .id, bclass.pred and mclass.pred. with the NA values (the blank pages)
+  mutate(bclass.pred = if_else(is.na(bclass.pred),
+                               factor("N/A: No relevant content.", 
+                                      levels = levels(bclass.pred)),
+                               bclass.pred),
+         mclass.pred = if_else(is.na(mclass.pred),
+                               factor("N/A: No relevant content.", 
+                                      levels = levels(mclass.pred)),
+                               mclass.pred) )
+# mutate the bclass.pred and mclass.pred columns, if NA return "N/A: No relevant content." (as a factor)
+# otherwise return bclass.pred / mclass.pred
+```
+
+
+
 Save models
 ```{r}
+# "Export a deployable copy of each model and a set of predictions from each model on the test data."
 saveRDS(en_bin, "../results/glmnet_binary_model.rds")
 saveRDS(en_mult, "../results/glmnet_multiclass_model.rds")
+saveRDS(pred_df, "../results/glmnet_pred_df.rds")
 ```
 
 

@@ -5,7 +5,6 @@ format: html
 editor: visual
 ---
 
-
 ```{r}
 #load("../data/claims-clean-example.RData")
 # this is the cleaned data created by Kendra
@@ -13,7 +12,6 @@ load("../data/claims-clean.RData")
 
 #head(claims_clean, 20)
 ```
-
 
 ```{r}
 library(rsample)
@@ -26,8 +24,8 @@ library(Matrix)
 library(glmnet)
 ```
 
-
 This code is similar to in class activity "multinomial logistic regression":
+
 ```{r}
 set.seed(2026)
 
@@ -43,7 +41,8 @@ full_dtm <- nlp_fn(claims_clean)
 #train_dtm <- training(partitions)
 #test_dtm  <- testing(partitions)
 # Loaded the validation IDs from 
-val_ids <- readRDS("C:../data/val-ids.rds")
+load("../data/claims-partitions.RData")
+val_ids <- testing(partitions)$.id
 
 # Instead of initial_split(), split based on the same .id
 test_dtm  <- filter(full_dtm, .id %in% val_ids)
@@ -59,8 +58,8 @@ test_labels <- select(test_dtm, .id, bclass) %>%
 # had to left join by .id to get mclass in the joined table.
 ```
 
-
 PCA / Projection
+
 ```{r}
 # need to (PCA) project test data onto PCs, class activity uses reproject_fn(), a function created for this class activity.
 source("https://raw.githubusercontent.com/pstat197/pstat197a/main/materials/activities/data/projection-functions.R")
@@ -78,8 +77,8 @@ test_dtm_projected <- reproject_fn(.dtm = test_predictors, proj_out)
 proj_out$n_pc
 ```
 
-
 Train and Test data frames
+
 ```{r}
 train <- train_labels %>%
   transmute(bclass = factor(bclass),
@@ -92,8 +91,8 @@ test <- test_labels %>%
   bind_cols(test_dtm_projected)
 ```
 
-
 Binary Logistic Regression with Elastic Net
+
 ```{r}
 # we use elastic net because glm() would overfit, glmnet() better handles correlated predictors and overfitting.
 x_train <- as.matrix(select(train, -bclass, -mclass))
@@ -135,10 +134,11 @@ pred_df_bin %>% panel(truth = bclass,
 # accuracy: how much the model predicted correct labels.
 # roc_auc: how well the model is at separating the two classes (relevant and irrelevant)
 ```
+
 accuracy = 0.7900943
 
-
 Multiclass Logistic Regression with Elastic Net
+
 ```{r}
 y_train_mult <- train$mclass
 
@@ -180,12 +180,11 @@ diag(pred_tbl)/rowSums(pred_tbl)
 # predictionwise accuracy rates
 diag(pred_tbl)/colSums(pred_tbl)
 ```
+
 overall accuracy = .7334906
 
+Now we test the two models on claims-test.RData, where claims-test.RData has 929 webpages, but it has no labels. Then we export a deployable copy of each model and a set of predictions from each model on the test data.
 
-
-Now we test the two models on claims-test.RData, where claims-test.RData has 929 webpages, but it has no labels.
-Then we export a deployable copy of each model and a set of predictions from each model on the test data.
 ```{r}
 load("../data/claims-test.RData")
 
@@ -268,22 +267,11 @@ pred_df <- test_clean %>%
 # otherwise return bclass.pred / mclass.pred
 ```
 
-
-
 Save models
+
 ```{r}
 # "Export a deployable copy of each model and a set of predictions from each model on the test data."
 saveRDS(en_bin, "../results/glmnet_binary_model.rds")
 saveRDS(en_mult, "../results/glmnet_multiclass_model.rds")
 saveRDS(pred_df, "../results/glmnet_pred_df.rds")
 ```
-
-
-
-
-
-
-
-
-
-

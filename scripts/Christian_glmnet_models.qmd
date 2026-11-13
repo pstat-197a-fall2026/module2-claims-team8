@@ -1,0 +1,200 @@
+---
+title: "Christian_glmnet_models"
+author: "Christian"
+format: html
+editor: visual
+---
+
+
+```{r}
+#load("../data/claims-clean-example.RData")
+# this is the cleaned data created by Kendra
+load("../data/claims-clean.RData")
+
+#head(claims_clean, 20)
+```
+
+
+```{r}
+library(rsample)
+library(textstem)
+library(sparsesvd)
+library(tidyverse)
+library(tidymodels)
+library(modelr)
+library(Matrix)
+library(glmnet)
+```
+
+
+This code is similar to in class activity "multinomial logistic regression":
+```{r}
+set.seed(2026)
+
+source("../scripts/preprocessing-primary.R")
+# The nlp_fn() function is basically doing tokenization, DTM then TF-IDF. Now the text is translated into numbers.
+
+# there was an error where I had 1712 labels, but only 1580 rows of data. nlp_fn() dropped 132 pages probably because there were no valid words left to make a TF-IDF score.
+# it seems the activity already had a "claims-multi-tfidf.csv" that did nlp_fn() on the data before splitting the data.
+full_dtm <- nlp_fn(claims_clean)
+
+# instead of splitting, I need to make sure I am testing on the same pages as Khio, 
+#partitions <- initial_split(full_dtm, prop = .8)
+#train_dtm <- training(partitions)
+#test_dtm  <- testing(partitions)
+# Loaded the validation IDs from 
+val_ids <- readRDS("C:../data/val-ids.rds")
+
+# Instead of initial_split(), split based on the same .id
+test_dtm  <- filter(full_dtm, .id %in% val_ids)
+train_dtm <- filter(full_dtm, !(.id %in% val_ids))
+
+train_labels <- select(train_dtm, .id, bclass) %>%
+  left_join(select(claims_clean, .id, mclass), by = ".id")
+# need to save mclass because nlp_fn() doesn't save it.
+# but using train_dtm, so need to get it from clean data
+test_labels <- select(test_dtm, .id, bclass) %>%
+  left_join(select(claims_clean, .id, mclass), by = ".id")
+# used to check predictions
+# had to left join by .id to get mclass in the joined table.
+```
+
+
+PCA / Projection
+```{r}
+# need to (PCA) project test data onto PCs, class activity uses reproject_fn(), a function created for this class activity.
+source("https://raw.githubusercontent.com/pstat197/pstat197a/main/materials/activities/data/projection-functions.R")
+
+train_predictors <- select(train_dtm, -.id, -bclass)
+test_predictors  <- select(test_dtm, -.id, -bclass)
+# had to remove .id and bclass b/c projection_fn() can only handle numeric columns. But had to remove after creating the labels.
+
+# projection_fn() is the PCA function
+proj_out <- projection_fn(.dtm = train_predictors, .prop = .8)
+train_dtm_projected <- proj_out$data
+# reproject_fn() was also used in the activity for test projection
+test_dtm_projected <- reproject_fn(.dtm = test_predictors, proj_out)
+
+proj_out$n_pc
+```
+
+
+Train and Test data frames
+```{r}
+train <- train_labels %>%
+  transmute(bclass = factor(bclass),
+            mclass = factor(mclass)) %>%
+  bind_cols(train_dtm_projected)
+
+test <- test_labels %>%
+  transmute(bclass = factor(bclass),
+            mclass = factor(mclass)) %>%
+  bind_cols(test_dtm_projected)
+```
+
+
+Binary Logistic Regression with Elastic Net
+```{r}
+# we use elastic net because glm() would overfit, glmnet() better handles correlated predictors and overfitting.
+x_train <- as.matrix(select(train, -bclass, -mclass))
+# glmnet() doesn't accept tibbles, so have to change it to a numeric matrix.
+y_train_bin <- train$bclass
+
+set.seed(2026)
+# alpha = .1 b/c a more ridge regression is better when there are many predictors that have a small non-zero effect. (same as activity)
+en_bin <- glmnet(x_train, y_train_bin, family = "binomial", alpha = .1)
+# as seen in the activity, this uses cross validation. used to get lambda.min.
+cv_bin <- cv.glmnet(x_train, y_train_bin, family = "binomial", alpha = .1)
+
+# similar to x_train
+x_test <- as.matrix(select(test, -bclass, -mclass))
+
+pred_prob <- predict(en_bin, s = cv_bin$lambda.min,
+                     newx = x_test, type = "response")
+
+# store predictions in a data frame with true labels
+pred_df_bin <- test_labels %>% 
+  transmute(bclass = factor(bclass)) %>%
+  bind_cols(pred = as.numeric(pred_prob)) %>%
+  mutate(bclass.pred = factor(pred > .5, labels = levels(bclass)))
+# so pred > .5 = "Relevant claim content", < .5 = N/A: No relevant content.
+
+# define classification metric panel 
+panel <- metric_set(sensitivity, 
+                    specificity, 
+                    accuracy, 
+                    roc_auc)
+
+# compute test set accuracy
+pred_df_bin %>% panel(truth = bclass, 
+                      estimate = bclass.pred, 
+                      pred, 
+                      event_level = "second")
+# sensitivity: all the pages that were relevant that the model knew was relevent
+# specificity: all the pages that were irrelevant that the model knew was irrelevant.
+# accuracy: how much the model predicted correct labels.
+# roc_auc: how well the model is at separating the two classes (relevant and irrelevant)
+```
+accuracy = 0.7900943
+
+
+Multiclass Logistic Regression with Elastic Net
+```{r}
+y_train_mult <- train$mclass
+
+set.seed(2026)
+# I chose alpha = .2 because there are now way more coefficients than training web pages
+# so we are more at risk of overfitting. 
+en_mult <- glmnet(x_train, y_train_mult, family = "multinomial", alpha = .2)
+cv_mult <- cv.glmnet(x_train, y_train_mult, family = "multinomial", alpha = .2)
+
+preds_multi <- predict(en_mult, s = cv_mult$lambda.min, 
+                       newx = x_test, type = "response")
+
+# this guarantees that as_tibble() receives a clean 2D matrix.
+#as_tibble(preds_multi[, , 1])
+
+# now we choose the most probable mclass value for each row
+pred_class <- as_tibble(preds_multi[, , 1]) %>% 
+  mutate(row = row_number()) %>%
+  pivot_longer(-row, 
+               names_to = "label", 
+               values_to = "probability") %>% 
+  group_by(row) %>% 
+  slice_max(probability, n = 1) %>% 
+  pull(label) %>%
+  factor(levels = levels(train$mclass))
+# needed to order by mclass 
+
+# cross-tabulate predictions vs truth
+pred_tbl <- table(test_labels$mclass, pred_class)
+pred_tbl
+
+# overall accuracy
+sum(diag(pred_tbl)) / sum(pred_tbl)
+# accuracy = .7334906
+
+# classwise accuracy
+diag(pred_tbl)/rowSums(pred_tbl)
+
+# predictionwise accuracy rates
+diag(pred_tbl)/colSums(pred_tbl)
+```
+overall accuracy = .7334906
+
+
+Save models
+```{r}
+saveRDS(en_bin, "../results/glmnet_binary_model.rds")
+saveRDS(en_mult, "../results/glmnet_multiclass_model.rds")
+```
+
+
+
+
+
+
+
+
+
+

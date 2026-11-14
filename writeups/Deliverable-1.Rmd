@@ -1,7 +1,10 @@
 ---
-title: "Deliverable-1"
+title: 'Summary of Findings: Tasks 1-3'
+author: "Shiv Dutta and Anna Calkins"
+date: "2026-11-13"
 output: html_document
 ---
+
 ### Task 1 - HTML scraping
 
 **Including header content did not meaningfully improve predictions.** We fit a logistic principal component regression to the binary class using (i) paragraph text only and (ii) paragraph plus header text (`h1`--`h6`), choosing the number of components by 5-fold cross-validation. Results are averaged over three random 80/20 splits of the same 1,969 pages.
@@ -40,7 +43,10 @@ Out of the three configurations, the third network was the only one trained with
 
 Regardless, we chose to compute predictions using the test set data on this trained network, and it achieved an accuracy of 0.831, a sensitivity of 0.866, a specificity of 0.787, and an roc_auc of 0.892. This is comparable to or slightly above the principal component logistic regression with headers (accuracy 0.783, roc_auc 0.847). It must be noted that the task one included multiple splits, and the performance metrics we are comparing the task 3 network to are an average across the mutiple splits. The task 3 network is at least comparable to the average performance of the task 1 principal component logisitic regression model.
 
-
+| Model       | Accuracy | Sensitivity | Specificity | AUC   |
+|-------------|----------|-------------|-------------|-------|
+| Task 1      | 78.3%    | 79.1%       | 77.5%       | 0.847 |
+| Task 3      | 83.1%    | 86.6%       | 78.7%       | 0.892 |
 
 
 

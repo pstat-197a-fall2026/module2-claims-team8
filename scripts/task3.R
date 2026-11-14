@@ -136,10 +136,7 @@ plot(history_task3_2)
 # Model 3
 
 model_task3_3 <- keras_model_sequential(input_shape = ncol(x_train)) %>%
-  layer_dense(64, activation = 'relu') %>%
-  layer_dropout(0.3) %>%
-  layer_dense(32, activation = 'relu') %>%
-  layer_dropout(0.3) %>%
+  layer_dense(10) %>%
   layer_dense(1) %>%
   layer_activation(activation = 'sigmoid')
 
@@ -158,6 +155,7 @@ history_task3_3 <- model_task3_3 %>%
 
 
 plot(history_task3_3)
+
 
 # test
 
@@ -189,6 +187,8 @@ metrics_task3 <- bind_rows(
   roc_auc(results_task3, truth, prob, event_level = 'second'))
 
 metrics_task3
+
+
 
 
 save_model(model_task3_3, "results/task3_model.keras")

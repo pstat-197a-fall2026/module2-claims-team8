@@ -6,6 +6,22 @@ output: html_document
 
 ## Task 3
 
-Task 3 asked us to build and train a neural model, with the ultimate goal of finding a configuration that performed at least as well as the principle component logistic regression from task 1. More specifically, the principle component logistic regression from task 1, with the 
+Task 3 asked us to build and train a neural model, with the ultimate goal of finding a configuration that performed at least as well as the principle component logistic regression from task 1. To quantify the performance, we calculated accuracy, sensitivity, specificity, and area under the curve metrics. More specifically, the principle component logistic regression from task 1, with the header included, achieved an accuracy of 0.783, a sensitivity of 0.791, a specificity of 0.775, and an roc_auc of 0.847. 
 
-To begin, the
+To begin, we partitioned the data into a training and test set. Each network was built on the training partition.
+
+For the first neural network configuration, we trained a single layer network with 10 units. For this model, we selected a sigmoid activation. When compiling the model, we chose the loss value as binary crossentropy, a SGD optimizer, and binary accuracy as the model metric. We trained this model with 50 epochs. From the plot of the trained model, it was clear that the predictive accuracy increased over epochs, but only achieved an accuracy of 0.558 at its best.
+
+
+Secondly, we adjusted the training configuration to utilize a adam optimizer and fit the model on the training data with only 10 epochs. We kept the model configurations the same as the previous neural network. This training configuration performed significantly better, reaching 0.93 binary accuracy metric across 10 epochs.
+
+
+Finally, we adjusted the training configurations in a third neural network to include a validation set within our already partitioned training data. This model also used an adam optimizer and had a single layer network with 10 units. In training the model, 20% of the training data was used as the validation set, leaving 80% of the training set as the training subset. The training accuracy surpassed 0.95 across 20 epochs, however the validation accuracy leveled out at 0.77 across the 20 epochs.
+
+
+Out of the three configurations, the third network achieved the most successful binary accuracy, so we chose to compute predictions using the test set data on this trained network. The estimated metrics from this network configuration achieved an accuracy of 0.831, a sensitivity of 0.866, a specitivity of 0.787, and an roc_auc of 0.892. This outperforms the principal component logistic regression that included headers (from task 1), with a higher roc_auc and a higher estimated accuracy.
+
+
+
+
+

@@ -3,3 +3,9 @@ title: "Deliverable-1"
 output: html_document
 ---
 
+
+## Task 3
+
+Task 3 asked us to build and train a neural model, with the ultimate goal of finding a configuration that performed at least as well as the principle component logistic regression from task 1. More specifically, the principle component logisitc regression from task 1, with the 
+
+To begin, the

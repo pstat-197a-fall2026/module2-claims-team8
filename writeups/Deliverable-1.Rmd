@@ -2,9 +2,29 @@
 title: "Deliverable-1"
 output: html_document
 ---
+### Task 1 - HTML scraping
 
+**Including header content did not meaningfully improve predictions.** We fit a logistic principal component regression to the binary class using (i) paragraph text only and (ii) paragraph plus header text (`h1`--`h6`), choosing the number of components by 5-fold cross-validation. Results are averaged over three random 80/20 splits of the same 1,969 pages.
 
-## Task 3
+| Text scraped         | Accuracy | Sensitivity | Specificity | AUC   |
+|----------------------|----------|-------------|-------------|-------|
+| Paragraphs only      | 78.7%    | 81.1%       | 75.8%       | 0.835 |
+| Paragraphs + headers | 78.3%    | 79.1%       | 77.5%       | 0.847 |
+
+Accuracy changed by $-0.3$ percentage points, less than the roughly 2-point variation across splits; AUC was slightly higher with headers, but the evidence is weak.
+
+### Task 2- Bigrams
+
+**Bigrams did not capture meaningful additional information.** We fit a logistic principal component regression to the word tokens, then fed its predicted log-odds, together with a few principal components of the bigram tokens (chosen by cross-validation), into a second logistic regression. Both models were evaluated on the same three splits of 1,952 pages.
+
+| Model              | Accuracy | Sensitivity | Specificity | AUC   |
+|--------------------|----------|-------------|-------------|-------|
+| Words only         | 78.7%    | 81.3%       | 75.4%       | 0.844 |
+| Words + bigram PCs | 79.2%    | 84.7%       | 72.4%       | 0.848 |
+
+Accuracy rose by only $0.5$ percentage points and AUC by $0.004$. In two of three splits the bigram components did not help (likelihood-ratio $p = 0.92$ and $0.36$); only the third showed a significant gain ($p < 0.001$, $+2.6$ points), which we do not treat as reliable on its own.
+
+### Task 3 - Neural Network
 
 Task 3 asked us to build and train a neural model, with the ultimate goal of finding a configuration that performed at least as well as the principal component logistic regression from task 1. To quantify the performance, we calculated accuracy, sensitivity, specificity, and area under the curve metrics. More specifically, the principal component logistic regression from task 1, with the header included, achieved an accuracy of 0.783, a sensitivity of 0.791, a specificity of 0.775, and an roc_auc of 0.847. 
 
@@ -12,9 +32,7 @@ To begin, we partitioned the data into a training and test set. Each network was
 
 For the first neural network configuration, we trained a single layer network with 10 units. For this model, we selected a sigmoid activation. When compiling the model, we chose the loss value as binary crossentropy, a stochastic gradient descent (SGD) optimizer, and binary accuracy as the model metric. We trained this model with 50 epochs. From the plot of the trained model, it was clear that the predictive accuracy increased over epochs, but only achieved a training accuracy of 0.558 at its best.
 
-
 Secondly, we adjusted the training configuration to utilize an Adam optimizer and fit the model on the training data with only 10 epochs. We kept the model configurations the same as the previous neural network. This training configuration performed significantly better, reaching 0.93 binary accuracy metric across 10 epochs.
-
 
 Finally, we adjusted the training configurations in a third neural network to include a validation set within our already partitioned training data. This model also used an Adam optimizer and had a single layer network with 10 units. In training the model, 20% of the training data was used as the validation set, leaving 80% of the training set as the training subset. The training accuracy surpassed 0.95 across 20 epochs, however the validation accuracy leveled out near 0.77 across the 20 epochs.
 
